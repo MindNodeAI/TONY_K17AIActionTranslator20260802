@@ -291,17 +291,36 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- History Area (移到左邊，解決與老師簡介疊圖的問題) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-history text-gray-500"></i> 本地歷史任務
+                        </h3>
+                        <!-- 補齊缺失的按鈕，徹底解決 addEventListener 報錯 -->
+                        <button id="btn-fetch-cloud" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-primary rounded text-xs font-medium transition shadow-sm border border-blue-100 flex items-center gap-1">
+                            <i class="fas fa-cloud-download-alt"></i> 載入雲端
+                        </button>
+                    </div>
+                    <div id="history-list" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                        <!-- History items injected here -->
+                        <div class="text-center py-8 text-gray-400 text-sm italic" id="empty-history">
+                            尚無歷史任務紀錄
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Right Column: AI Result & History -->
+            <!-- Right Column: AI Result -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Current Result Area -->
                 <div id="result-area" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hidden-view fade-in flex flex-col h-full min-h-[500px]">
-                    <div class="flex justify-between items-center mb-4 border-b pb-4">
+                    <div class="flex justify-between items-center mb-4 border-b pb-4 flex-wrap gap-3">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <i class="fas fa-robot text-primary"></i> AI 答覆結果
                         </h3>
-                        <div class="flex gap-2">
+                        <div class="flex flex-wrap gap-2">
                             <button id="btn-copy-result" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm font-medium transition" title="複製內容">
                                 <i class="far fa-copy"></i> 複製
                             </button>
@@ -316,22 +335,6 @@
                     <!-- Result Content (Markdown rendered) -->
                     <div id="ai-output-content" class="markdown-body flex-grow overflow-y-auto pr-2 text-sm text-gray-800">
                         <!-- AI content injected here -->
-                    </div>
-                </div>
-
-                <!-- History Area -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            <i class="fas fa-history text-gray-500"></i> 本地歷史任務
-                        </h3>
-                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">離線自動儲存</span>
-                    </div>
-                    <div id="history-list" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-                        <!-- History items injected here -->
-                        <div class="text-center py-8 text-gray-400 text-sm italic" id="empty-history">
-                            尚無歷史任務紀錄
-                        </div>
                     </div>
                 </div>
             </div>
@@ -968,7 +971,16 @@
         
         window.loadHistoryTask = (id) => {
             const task = STATE.localTasks.find(t => t.id === id);
-            if(task) displayResult(task.content, task.title);
+            if(task) {
+                displayResult(task.content, task.title);
+                // 平滑捲動到結果區塊 (解決點了感覺沒反應的問題)
+                setTimeout(() => {
+                    const resultArea = document.getElementById('result-area');
+                    if (resultArea) {
+                        resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
         }
 
         window.deleteHistoryTask = (id) => {
@@ -1032,6 +1044,45 @@
             }
         });
 
+        // 新增：從雲端載入備份任務功能
+        document.getElementById('btn-fetch-cloud').addEventListener('click', async () => {
+            if (!STATE.user) {
+                showModal('錯誤', '請先登入會員，才能載入雲端備份。');
+                return;
+            }
+            try {
+                showLoading('同步雲端紀錄中...', true);
+                const q = query(collection(db, "k17_users", STATE.user.uid, "tasks"), orderBy("createdAt", "desc"));
+                const snap = await getDocs(q);
+                let newCount = 0;
+                
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const isExist = STATE.localTasks.some(t => t.title === data.title && t.content === data.content);
+                    if (!isExist) {
+                        STATE.localTasks.unshift({
+                            id: 'cloud_' + docSnap.id,
+                            title: data.title,
+                            content: data.content,
+                            timestamp: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+                        });
+                        newCount++;
+                    }
+                });
+                
+                if (newCount > 0) {
+                    localStorage.setItem('tony_local_tasks', JSON.stringify(STATE.localTasks));
+                    renderLocalTasks();
+                    showModal('同步完成', `成功從資料庫載入 ${newCount} 筆雲端紀錄！`);
+                } else {
+                    showModal('提示', '雲端目前沒有新的紀錄需要同步。');
+                }
+            } catch (err) {
+                showModal('同步失敗', err.message);
+            } finally {
+                hideLoading();
+            }
+        });
         
         document.getElementById('btn-nav-admin').addEventListener('click', () => switchView('admin'));
         document.getElementById('btn-back-to-app').addEventListener('click', () => switchView('app'));

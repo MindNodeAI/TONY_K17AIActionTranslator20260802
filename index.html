@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拍一下，就知道怎麼辦 | TONY STUDIO</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,7 +29,12 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background-color: #f3f4f6; color: #1f2937; 
+            overflow-x: hidden; /* 防止水平飄移 */
+            overscroll-behavior-x: none; /* 防止 iOS 左右滑動回彈 */
+        }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); }
         .hidden-view { display: none !important; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
@@ -42,6 +47,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
         
         /* Markdown Styles for AI Output */
+        .markdown-body { word-wrap: break-word; overflow-wrap: break-word; } /* 強制斷行，防止超長文字撐破版面 */
         .markdown-body h1 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; color: #1e3a8a; }
         .markdown-body h2 { font-size: 1.25em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #1e3a8a; }
         .markdown-body h3 { font-size: 1.15em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; color: #b45309; } /* 針對 🎯 標題特別設計 */
@@ -97,22 +103,6 @@
         </button>
     </div>
 
-    <!-- Top API Key Bar (Visible only when logged in) -->
-    <div id="api-key-bar" class="hidden-view bg-gradient-to-r from-primary to-blue-800 text-white shadow-md z-40 relative">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-key text-secondary"></i>
-                <span class="text-sm font-medium">Gemini API Key 狀態：</span>
-                <span id="api-key-status" class="text-xs px-2 py-1 bg-red-500/20 text-red-100 rounded-full border border-red-400">未設定</span>
-            </div>
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-                <input type="password" id="input-api-key" placeholder="輸入您的 Gemini API Key" class="px-3 py-1.5 text-sm text-gray-900 rounded bg-white border-none focus:ring-2 focus:ring-secondary w-full sm:w-64 placeholder-gray-400">
-                <button id="btn-save-key" class="bg-secondary hover:bg-yellow-600 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap">儲存</button>
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-200 hover:text-white underline whitespace-nowrap">取得 Key</a>
-            </div>
-        </div>
-    </div>
-
     <!-- Main Navigation -->
     <nav id="main-nav" class="hidden-view bg-white shadow-sm sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -145,12 +135,10 @@
                 <p class="text-sm text-gray-600 mt-2">把生活文件，直接變成下一步行動。</p>
             </div>
 
-            <!-- Error Message Box -->
             <div id="auth-error" class="hidden mb-4 bg-red-50 border-l-4 border-danger p-4 rounded-r-md">
                 <p class="text-sm text-danger font-medium" id="auth-error-text"></p>
             </div>
             
-            <!-- Success Message Box -->
             <div id="auth-success" class="hidden mb-4 bg-green-50 border-l-4 border-success p-4 rounded-r-md">
                 <p class="text-sm text-success font-medium" id="auth-success-text"></p>
             </div>
@@ -208,7 +196,6 @@
                     <button type="button" class="toggle-password absolute right-3 top-8 text-gray-400" data-target="reg-password"><i class="fas fa-eye"></i></button>
                 </div>
                 
-                <!-- REQUIRED TEXT FOR SPAM FOLDER -->
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
                     <i class="fas fa-exclamation-triangle text-secondary mt-0.5"></i>
                     <p class="text-xs text-yellow-800 font-medium leading-relaxed">
@@ -268,7 +255,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Actions -->
+            <!-- Left Column: Actions & History -->
             <div class="lg:col-span-1 space-y-6">
                 
                 <!-- Quick Snap / OCR Card -->
@@ -292,14 +279,13 @@
                     </div>
                 </div>
 
-                <!-- History Area (移到左邊，解決與老師簡介疊圖的問題) -->
+                <!-- History Area -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                     <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <i class="fas fa-history text-gray-500"></i> 本地歷史任務
                         </h3>
-                        <!-- 補齊缺失的按鈕，徹底解決 addEventListener 報錯 -->
-                        <button id="btn-fetch-cloud" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-primary rounded text-xs font-medium transition shadow-sm border border-blue-100 flex items-center gap-1">
+                        <button id="btn-fetch-cloud" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-primary rounded text-xs font-medium transition shadow-sm border border-blue-100 flex items-center gap-1">
                             <i class="fas fa-cloud-download-alt"></i> 載入雲端
                         </button>
                     </div>
@@ -332,6 +318,12 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- 新增：圖片預覽容器 -->
+                    <div id="result-image-container" class="hidden mb-4 flex justify-center bg-gray-50 rounded-lg p-2 border border-gray-100">
+                        <img id="result-image" src="" class="max-h-64 object-contain rounded-md shadow-sm">
+                    </div>
+
                     <!-- Result Content (Markdown rendered) -->
                     <div id="ai-output-content" class="markdown-body flex-grow overflow-y-auto pr-2 text-sm text-gray-800">
                         <!-- AI content injected here -->
@@ -408,6 +400,28 @@
             </div>
         </div>
 
+        <!-- Global Settings Card -->
+        <div class="bg-orange-50 border border-orange-100 rounded-2xl p-6 mb-6 shadow-sm">
+            <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <i class="fas fa-key text-orange-600"></i> 全域 Gemini API Key
+            </h3>
+            <p class="text-sm text-orange-800 mb-4">請填寫 Google AI Studio 的金鑰，此設定將套用至全站所有會員的分析任務中。只有管理員可以修改此設定。</p>
+            
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="password" id="admin-global-key" placeholder="••••••••••••••••••••••••••••••••••••" class="flex-grow px-4 py-2 rounded-lg border border-orange-200 focus:ring-2 focus:ring-orange-500 outline-none text-gray-800 bg-white shadow-inner">
+                <button id="btn-save-global-key" class="bg-gray-900 hover:bg-black text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md transition-colors whitespace-nowrap">
+                    儲存全域設定
+                </button>
+            </div>
+            <div class="mt-4 flex items-center gap-2 bg-green-50 px-4 py-3 rounded-lg border border-green-100">
+                <div class="h-6 w-6 bg-green-500 rounded-full flex items-center justify-center text-white"><i class="fas fa-check text-xs"></i></div>
+                <div>
+                    <p class="text-sm font-bold text-green-800">系統 AI 引擎狀態正常</p>
+                    <p class="text-xs text-green-600">連線穩定，可隨時進行分析</p>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -440,10 +454,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, getDocs, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-        // === 替換為正式的 Firebase Config ===
         const firebaseConfig = {
-            apiKey: "AIzaSyAdnw6AC5Z2wWdnmuPSvNd80JFk82uP51Y", // Formal Key as requested
+            apiKey: "AIzaSyAdnw6AC5Z2wWdnmuPSvNd80JFk82uP51Y",
             authDomain: "k17-then-i-know-what-to-do.firebaseapp.com",
             projectId: "k17-then-i-know-what-to-do",
             storageBucket: "k17-then-i-know-what-to-do.firebasestorage.app",
@@ -455,8 +469,8 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
-        // 初始化時載入儲存的信箱
         document.addEventListener('DOMContentLoaded', () => {
             const savedEmail = localStorage.getItem('tony_login_email');
             if(savedEmail) {
@@ -465,33 +479,27 @@
             }
         });
 
-        // Global State
         const STATE = {
             user: null,
             userData: null,
             isAdmin: false,
-            isRegistering: false, // 1. 新增此旗標
-            geminiKey: localStorage.getItem('tony_gemini_key') || '',
+            isRegistering: false,
+            geminiKey: '',
             localTasks: JSON.parse(localStorage.getItem('tony_local_tasks') || '[]'),
-            currentTask: null // Store result for exporting
+            currentTask: null
         };
 
-        let currentAbortController = null; // 新增：用於控制取消 API 請求
-
+        let currentAbortController = null;
         const SUPER_ADMIN_EMAIL = 'mindnodeai@gmail.com';
 
-        // DOM Elements - Views
         const viewAuth = document.getElementById('view-auth');
         const viewApp = document.getElementById('view-app');
         const viewAdmin = document.getElementById('view-admin');
         const nav = document.getElementById('main-nav');
-        const apiKeyBar = document.getElementById('api-key-bar');
         
-        // DOM - Utils
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
 
-        // --- Custom Modal System ---
         function showModal(title, message, isConfirm = false, onConfirm = null) {
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-message').textContent = message;
@@ -500,7 +508,6 @@
             const btnConfirm = document.getElementById('modal-btn-confirm');
             const icon = document.getElementById('modal-icon');
 
-            // Reset icon
             icon.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4';
             icon.innerHTML = '<i class="fas fa-info-circle text-xl"></i>';
             
@@ -510,7 +517,7 @@
                 icon.innerHTML = '<i class="fas fa-exclamation-triangle text-xl text-yellow-600"></i>';
             } else {
                 btnCancel.classList.add('hidden');
-                if(title.includes('錯誤') || title.includes('失敗')) {
+                if(title.includes('錯誤') || title.includes('失敗') || title.includes('過大')) {
                     icon.classList.add('bg-red-100', 'text-red-600');
                     icon.innerHTML = '<i class="fas fa-times-circle text-xl text-red-600"></i>';
                 } else {
@@ -520,7 +527,6 @@
 
             modal.classList.remove('hidden');
 
-            // Cleanup old listeners to prevent multiple firing
             const newConfirm = btnConfirm.cloneNode(true);
             const newCancel = btnCancel.cloneNode(true);
             btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
@@ -536,22 +542,15 @@
         function showLoading(text = '處理中...', cancellable = false) {
             loadingText.textContent = text;
             loadingOverlay.classList.remove('hidden');
-            
             const cancelBtn = document.getElementById('btn-cancel-loading');
-            if (cancellable) {
-                cancelBtn.classList.remove('hidden');
-            } else {
-                cancelBtn.classList.add('hidden');
-            }
+            if (cancellable) cancelBtn.classList.remove('hidden');
+            else cancelBtn.classList.add('hidden');
         }
         
         function hideLoading() { loadingOverlay.classList.add('hidden'); }
         
-        // 綁定取消按鈕事件
         document.getElementById('btn-cancel-loading').addEventListener('click', () => {
-            if (currentAbortController) {
-                currentAbortController.abort(); // 觸發中斷
-            }
+            if (currentAbortController) currentAbortController.abort();
         });
 
         function showAuthError(msg) { 
@@ -567,22 +566,18 @@
             setTimeout(() => el.classList.add('hidden'), 5000);
         }
 
-        // --- View Routing ---
         function switchView(viewName) {
             viewAuth.classList.add('hidden-view');
             viewApp.classList.add('hidden-view');
             viewAdmin.classList.add('hidden-view');
             nav.classList.add('hidden-view');
-            apiKeyBar.classList.add('hidden-view');
 
             if (viewName === 'auth') {
                 viewAuth.classList.remove('hidden-view');
             } else if (viewName === 'app') {
                 viewApp.classList.remove('hidden-view');
                 nav.classList.remove('hidden-view');
-                apiKeyBar.classList.remove('hidden-view');
                 renderLocalTasks();
-                updateApiKeyStatusUI();
             } else if (viewName === 'admin') {
                 viewAdmin.classList.remove('hidden-view');
                 nav.classList.remove('hidden-view');
@@ -590,13 +585,11 @@
             }
         }
 
-        // Toggle Auth Forms
         document.getElementById('link-to-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-login').classList.add('hidden-view'); document.getElementById('form-register').classList.remove('hidden-view'); document.getElementById('form-forgot').classList.add('hidden-view'); });
         document.getElementById('link-to-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-register').classList.add('hidden-view'); document.getElementById('form-login').classList.remove('hidden-view'); document.getElementById('form-forgot').classList.add('hidden-view'); });
         document.getElementById('link-forgot').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-login').classList.add('hidden-view'); document.getElementById('form-forgot').classList.remove('hidden-view'); });
         document.getElementById('link-forgot-to-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-forgot').classList.add('hidden-view'); document.getElementById('form-login').classList.remove('hidden-view'); });
 
-        // Password Visibility Toggle
         document.querySelectorAll('.toggle-password').forEach(btn => {
             btn.addEventListener('click', function() {
                 const targetId = this.getAttribute('data-target');
@@ -619,16 +612,13 @@
             const type = document.getElementById('reg-type').value;
 
             try {
-                STATE.isRegistering = true; // 2. 註冊開始時設定為 true
+                STATE.isRegistering = true;
                 showLoading('建立帳號中...');
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 
-                // Set initial RBAC rules (Client-side simulation for this assignment scope)
-                // In production, Role claims should be set via Cloud Functions.
                 const role = (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) ? 'admin' : 'user';
                 
-                // Write user profile to Firestore
                 await setDoc(doc(db, "k17_users", user.uid), {
                     email: email,
                     realName: name,
@@ -640,10 +630,8 @@
                 });
 
                 await updateProfile(user, { displayName: name });
-                
-                // Double Opt-in: Send verification email
                 await sendEmailVerification(user);
-                await signOut(auth); // Force logout until verified
+                await signOut(auth);
                 
                 hideLoading();
                 document.getElementById('form-register').classList.add('hidden-view');
@@ -654,7 +642,7 @@
                 hideLoading();
                 showAuthError('註冊失敗：' + error.message);
             } finally {
-                STATE.isRegistering = false; // 3. 執行結束後務必還原
+                STATE.isRegistering = false;
             }
         });
 
@@ -670,7 +658,6 @@
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
-                // 嚴格強制 Email 驗證 (移除沙盒繞過邏輯)
                 if (!user.emailVerified) {
                     await signOut(auth);
                     hideLoading();
@@ -678,14 +665,12 @@
                     return;
                 }
 
-                // 處理記住信箱
                 if (rememberMe) {
                     localStorage.setItem('tony_login_email', email);
                 } else {
                     localStorage.removeItem('tony_login_email');
                 }
 
-                // Update Login Count
                 const userRef = doc(db, "k17_users", user.uid);
                 const userSnap = await getDoc(userRef);
                 
@@ -699,33 +684,18 @@
                         lastLogin: serverTimestamp()
                     });
                 } else {
-                    // 自動修復機制：因為先前的註冊卡頓 Bug，可能導致帳號建立但資料庫未寫入
-                    // 若發現資料庫沒這筆資料，我們自動補建！
-                    if (user.email === SUPER_ADMIN_EMAIL) {
-                        await setDoc(userRef, {
-                            email: user.email,
-                            realName: user.displayName || '系統創作者',
-                            userType: 'admin',
-                            role: 'admin',
-                            loginCount: 1,
-                            createdAt: serverTimestamp(),
-                            lastLogin: serverTimestamp()
-                        });
-                        STATE.userData = { realName: user.displayName || '系統創作者', role: 'admin' };
-                        STATE.isAdmin = true;
-                    } else {
-                        await setDoc(userRef, {
-                            email: user.email,
-                            realName: user.displayName || '使用者',
-                            userType: 'visitor',
-                            role: 'user',
-                            loginCount: 1,
-                            createdAt: serverTimestamp(),
-                            lastLogin: serverTimestamp()
-                        });
-                        STATE.userData = { realName: user.displayName || '使用者', role: 'user' };
-                        STATE.isAdmin = false;
-                    }
+                    const isSuper = user.email === SUPER_ADMIN_EMAIL;
+                    await setDoc(userRef, {
+                        email: user.email,
+                        realName: user.displayName || (isSuper ? '系統創作者' : '使用者'),
+                        userType: isSuper ? 'admin' : 'visitor',
+                        role: isSuper ? 'admin' : 'user',
+                        loginCount: 1,
+                        createdAt: serverTimestamp(),
+                        lastLogin: serverTimestamp()
+                    });
+                    STATE.userData = { realName: user.displayName || '使用者', role: isSuper ? 'admin' : 'user' };
+                    STATE.isAdmin = isSuper;
                 }
 
                 document.getElementById('nav-user-name').innerHTML = `嗨, <strong>${STATE.userData.realName}</strong>`;
@@ -779,21 +749,46 @@
         // Auth State Observer
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // 4. 告訴監聽器：如果正在註冊流程中，不要觸發未驗證自動登出
                 if (STATE.isRegistering) return;
                 
-                // 嚴格檢查未驗證強制登出
                 if (!user.emailVerified) {
                     signOut(auth);
                     switchView('auth');
                     return;
                 }
                 STATE.user = user;
-                // Fetch profile to secure routing on reload
+                
+                try {
+                    const settingsSnap = await getDoc(doc(db, "k17_settings", "system"));
+                    if (settingsSnap.exists() && settingsSnap.data().geminiApiKey) {
+                        STATE.geminiKey = settingsSnap.data().geminiApiKey;
+                        const adminKeyInput = document.getElementById('admin-global-key');
+                        if(adminKeyInput) adminKeyInput.value = STATE.geminiKey;
+                    }
+                } catch(e) { console.warn("無法讀取全域金鑰設定", e); }
+
                 const userSnap = await getDoc(doc(db, "k17_users", user.uid));
                 if (userSnap.exists()) {
                     STATE.userData = userSnap.data();
                     STATE.isAdmin = STATE.userData.role === 'admin' || user.email === SUPER_ADMIN_EMAIL;
+                    document.getElementById('nav-user-name').innerHTML = `嗨, <strong>${STATE.userData.realName}</strong>`;
+                    document.getElementById('dashboard-name').textContent = STATE.userData.realName;
+                    if (STATE.isAdmin) document.getElementById('btn-nav-admin').classList.remove('hidden');
+                    switchView('app');
+                } else {
+                    const isSuper = (user.email === SUPER_ADMIN_EMAIL);
+                    const defaultRole = isSuper ? 'admin' : 'user';
+                    await setDoc(doc(db, "k17_users", user.uid), {
+                        email: user.email,
+                        realName: user.displayName || (isSuper ? '系統創作者' : '使用者'),
+                        userType: isSuper ? 'admin' : 'visitor',
+                        role: defaultRole,
+                        loginCount: 1,
+                        createdAt: serverTimestamp(),
+                        lastLogin: serverTimestamp()
+                    });
+                    STATE.userData = { realName: user.displayName || (isSuper ? '系統創作者' : '使用者'), role: defaultRole };
+                    STATE.isAdmin = isSuper;
                     document.getElementById('nav-user-name').innerHTML = `嗨, <strong>${STATE.userData.realName}</strong>`;
                     document.getElementById('dashboard-name').textContent = STATE.userData.realName;
                     if (STATE.isAdmin) document.getElementById('btn-nav-admin').classList.remove('hidden');
@@ -804,48 +799,61 @@
             }
         });
 
-
-        
-        const inputApiKey = document.getElementById('input-api-key');
-        const btnSaveKey = document.getElementById('btn-save-key');
-        const apiKeyStatus = document.getElementById('api-key-status');
-
-        function updateApiKeyStatusUI() {
-            if (STATE.geminiKey) {
-                inputApiKey.value = STATE.geminiKey.substring(0, 5) + '...' + STATE.geminiKey.substring(STATE.geminiKey.length - 4);
-                apiKeyStatus.textContent = '已設定';
-                apiKeyStatus.className = 'text-xs px-2 py-1 bg-green-500/20 text-green-100 rounded-full border border-green-400';
-            } else {
-                inputApiKey.value = '';
-                apiKeyStatus.textContent = '未設定';
-                apiKeyStatus.className = 'text-xs px-2 py-1 bg-red-500/20 text-red-100 rounded-full border border-red-400';
-            }
-        }
-
-        // --- 手機優先：分流拍照與相簿處理 ---
         document.getElementById('btn-camera').addEventListener('click', () => document.getElementById('file-camera').click());
         document.getElementById('btn-gallery').addEventListener('click', () => document.getElementById('file-gallery').click());
         
-        // 新增：圖片轉 Base64 輔助函式
-        const fileToBase64 = (file) => {
+        // 前端圖片壓縮函式
+        const compressImage = (file, maxDimension = 2048, quality = 0.7) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = error => reject(error);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > maxDimension) {
+                                height = Math.round(height * (maxDimension / width));
+                                width = maxDimension;
+                            }
+                        } else {
+                            if (height > maxDimension) {
+                                width = Math.round(width * (maxDimension / height));
+                                height = maxDimension;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                        
+                        resolve({
+                            base64: compressedDataUrl.split(',')[1],
+                            mimeType: 'image/jpeg'
+                        });
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (error) => reject(error);
             });
         };
 
-        // 新增：呼叫 Gemini API 輔助函式
         const callGeminiAPI = async (prompt, base64Image, mimeType) => {
-            // 從 UI 狀態取得 Key，若無則報錯
-            const apiKey = inputApiKey.value.trim() || STATE.geminiKey;
-            if (!apiKey) throw new Error('請先在畫面上方設定您的 Gemini API Key');
+            const apiKey = STATE.geminiKey;
+            if (!apiKey) throw new Error('管理員尚未設定全域 Gemini API Key，系統暫時無法分析。請聯繫管理員！');
             
-            // 使用您指定的 gemini-3.5-flash 模型
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
             
-            // 初始化取消控制器 (AbortController)
             currentAbortController = new AbortController();
 
             const response = await fetch(url, {
@@ -858,9 +866,9 @@
                             { inlineData: { mimeType: mimeType, data: base64Image } }
                         ]
                     }],
-                    generationConfig: { temperature: 0.1 } // 降低溫度以確保格式穩定
+                    generationConfig: { temperature: 0.1 }
                 }),
-                signal: currentAbortController.signal // 綁定取消信號
+                signal: currentAbortController.signal
             });
 
             if (!response.ok) {
@@ -869,7 +877,7 @@
             }
 
             const data = await response.json();
-            currentAbortController = null; // 處理完畢清空
+            currentAbortController = null;
             return data.candidates[0].content.parts[0].text;
         };
 
@@ -877,10 +885,24 @@
             const file = e.target.files[0];
             if(!file) return;
             
+            if (file.size > 10 * 1024 * 1024) {
+                showModal('檔案過大', '為確保系統穩定，請上傳小於 10MB 的圖片。');
+                e.target.value = '';
+                return;
+            }
+            
             try {
-                showLoading('正在分析文件，請稍候...', true); // 允許取消
-                const base64Str = await fileToBase64(file);
+                showLoading('正在壓縮並上傳圖片，請稍候...', true);
                 
+                const { base64, mimeType } = await compressImage(file);
+                
+                const imagePath = `users/${STATE.user.uid}/images/snap_${Date.now()}.jpg`;
+                const storageRef = ref(storage, imagePath);
+                await uploadString(storageRef, base64, 'base64', { contentType: mimeType });
+                const imageUrl = await getDownloadURL(storageRef);
+
+                showLoading('圖片已儲存，AI 正在分析重點...', true);
+
                 const sysPrompt = `這是一份生活文件。請幫我提取以下重點並整理成易讀的格式：
 1. 文件類型 (例如：帳單、通知)
 2. 重點摘要
@@ -890,47 +912,58 @@
 
 請嚴格根據圖片內容回答，不要自己腦補。若看不清楚請說明。`;
 
-                const aiResult = await callGeminiAPI(sysPrompt, base64Str, file.type);
-                displayResult(aiResult, `快速辨識: ${file.name}`);
-                saveLocalTask(`快速辨識: ${file.name}`, aiResult);
+                const aiResult = await callGeminiAPI(sysPrompt, base64, mimeType);
+                
+                displayResult(aiResult, `快速辨識: ${file.name}`, imageUrl);
+                saveLocalTask(`快速辨識: ${file.name}`, aiResult, imageUrl);
                 
             } catch (err) {
                 if (err.name === 'AbortError') {
-                    console.log("使用者已取消快速辨識任務");
+                    console.log("使用者已取消任務");
                 } else {
                     showModal('辨識失敗', err.message);
                 }
             } finally {
                 hideLoading();
-                e.target.value = ''; // reset
+                e.target.value = '';
             }
         };
 
         document.getElementById('file-camera').addEventListener('change', handleImageUpload);
         document.getElementById('file-gallery').addEventListener('change', handleImageUpload);
 
-        // Display Result & Local Backup
-        function displayResult(content, title) {
+        function displayResult(content, title, imageUrl = null) {
             document.getElementById('result-area').classList.remove('hidden-view');
-            // Parse Markdown
+            
+            const imgContainer = document.getElementById('result-image-container');
+            const imgEl = document.getElementById('result-image');
+            if (imageUrl) {
+                imgEl.src = imageUrl;
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.classList.add('hidden');
+                imgEl.src = '';
+            }
+
             document.getElementById('ai-output-content').innerHTML = marked.parse(content);
             
             STATE.currentTask = {
                 title: title,
                 content: content,
+                imageUrl: imageUrl,
                 timestamp: new Date().toISOString()
             };
         }
 
-        function saveLocalTask(title, content) {
+        function saveLocalTask(title, content, imageUrl = null) {
             const newTask = {
                 id: 'task_' + Date.now(),
                 title: title,
                 content: content,
+                imageUrl: imageUrl,
                 timestamp: new Date().toISOString()
             };
             STATE.localTasks.unshift(newTask);
-            // keep last 50
             if (STATE.localTasks.length > 50) STATE.localTasks.pop();
             localStorage.setItem('tony_local_tasks', JSON.stringify(STATE.localTasks));
             renderLocalTasks();
@@ -941,7 +974,6 @@
             const empty = document.getElementById('empty-history');
             document.getElementById('stat-local-tasks').textContent = STATE.localTasks.length;
             
-            // clear old items (keep empty message template)
             Array.from(list.children).forEach(child => {
                 if(child.id !== 'empty-history') child.remove();
             });
@@ -972,8 +1004,7 @@
         window.loadHistoryTask = (id) => {
             const task = STATE.localTasks.find(t => t.id === id);
             if(task) {
-                displayResult(task.content, task.title);
-                // 平滑捲動到結果區塊 (解決點了感覺沒反應的問題)
+                displayResult(task.content, task.title, task.imageUrl);
                 setTimeout(() => {
                     const resultArea = document.getElementById('result-area');
                     if (resultArea) {
@@ -988,14 +1019,12 @@
                 STATE.localTasks = STATE.localTasks.filter(t => t.id !== id);
                 localStorage.setItem('tony_local_tasks', JSON.stringify(STATE.localTasks));
                 renderLocalTasks();
-                // if it's the current one, hide view
                 if(STATE.currentTask && STATE.currentTask.id === id) {
                     document.getElementById('result-area').classList.add('hidden-view');
                 }
             });
         }
 
-        
         document.getElementById('btn-copy-result').addEventListener('click', () => {
             const text = STATE.currentTask?.content;
             if (text) {
@@ -1007,13 +1036,11 @@
 
         document.getElementById('btn-export-word').addEventListener('click', () => {
             if (!STATE.currentTask) return;
-            // Generate simple HTML compatible with MS Word
             const htmlContent = document.getElementById('ai-output-content').innerHTML;
             const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title><style>body { font-family: '微軟正黑體', sans-serif; }</style></head><body>";
             const postHtml = "</body></html>";
             const html = preHtml + `<h1>${STATE.currentTask.title}</h1><hr/>` + htmlContent + postHtml;
             
-            // Add BOM for UTF-8 Excel/Word recognition
             const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -1034,6 +1061,7 @@
                 await setDoc(taskRef, {
                     title: STATE.currentTask.title,
                     content: STATE.currentTask.content,
+                    imageUrl: STATE.currentTask.imageUrl || null,
                     createdAt: serverTimestamp()
                 });
                 hideLoading();
@@ -1044,7 +1072,6 @@
             }
         });
 
-        // 新增：從雲端載入備份任務功能
         document.getElementById('btn-fetch-cloud').addEventListener('click', async () => {
             if (!STATE.user) {
                 showModal('錯誤', '請先登入會員，才能載入雲端備份。');
@@ -1064,6 +1091,7 @@
                             id: 'cloud_' + docSnap.id,
                             title: data.title,
                             content: data.content,
+                            imageUrl: data.imageUrl || null,
                             timestamp: data.createdAt ? data.createdAt.toDate().toISOString() : new Date().toISOString()
                         });
                         newCount++;
@@ -1083,9 +1111,25 @@
                 hideLoading();
             }
         });
-        
+
         document.getElementById('btn-nav-admin').addEventListener('click', () => switchView('admin'));
         document.getElementById('btn-back-to-app').addEventListener('click', () => switchView('app'));
+
+        document.getElementById('btn-save-global-key').addEventListener('click', async () => {
+            const keyInput = document.getElementById('admin-global-key').value.trim();
+            if(!keyInput) return showModal('錯誤', '請輸入金鑰內容');
+            
+            try {
+                showLoading('儲存設定中...');
+                await setDoc(doc(db, "k17_settings", "system"), { geminiApiKey: keyInput }, { merge: true });
+                STATE.geminiKey = keyInput;
+                hideLoading();
+                showModal('成功', '全域 Gemini API Key 已成功更新！');
+            } catch (err) {
+                hideLoading();
+                showModal('儲存失敗', '權限不足或系統錯誤：' + err.message);
+            }
+        });
 
         async function loadAdminData() {
             if (!STATE.isAdmin) {
@@ -1098,13 +1142,11 @@
             tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> 讀取會員資料中...</td></tr>';
 
             try {
-                // Notice: In a real secure app, this requires Firestore rule: allow read: if request.auth.token.admin == true
-                // Here we fetch all users (assuming rules permit it for this demo scope)
                 const q = query(collection(db, "k17_users"), orderBy("createdAt", "desc"));
                 const querySnapshot = await getDocs(q);
                 
                 let html = '';
-                STATE.usersList = []; // store for CSV export
+                STATE.usersList = [];
 
                 querySnapshot.forEach((docSnap) => {
                     const u = docSnap.data();
@@ -1118,8 +1160,6 @@
                         : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">一般會員</span>`;
                     
                     const typeStr = u.userType === 'student' ? 'TONY學員' : '一般訪客';
-
-                    // Protect SUPER_ADMIN_EMAIL from being downgraded or deleted
                     const isSuper = (u.email === SUPER_ADMIN_EMAIL);
                     
                     let actionButtons = '';
@@ -1177,7 +1217,7 @@
                     showLoading('更新中...');
                     await updateDoc(doc(db, "k17_users", uid), { role: newRole });
                     hideLoading();
-                    loadAdminData(); // refresh table
+                    loadAdminData();
                 } catch (err) {
                     hideLoading();
                     showModal('更新失敗', err.message);
@@ -1186,12 +1226,12 @@
         }
 
         window.adminDeleteUser = (uid) => {
-            showModal('危險操作', `確定要永久刪除此會員的資料嗎？(這將刪除其 Firestore 檔案，Auth 實體需透過 Admin SDK 刪除)`, true, async () => {
+            showModal('危險操作', `確定要永久刪除此會員的資料嗎？`, true, async () => {
                 try {
                     showLoading('刪除中...');
                     await deleteDoc(doc(db, "k17_users", uid));
                     hideLoading();
-                    loadAdminData(); // refresh table
+                    loadAdminData();
                 } catch (err) {
                     hideLoading();
                     showModal('刪除失敗', err.message);
@@ -1199,17 +1239,15 @@
             });
         }
 
-        // Export CSV with BOM
         document.getElementById('btn-export-csv').addEventListener('click', () => {
             if(!STATE.usersList || STATE.usersList.length === 0) return;
             
-            let csvContent = '\uFEFF'; // BOM for Excel UTF-8
+            let csvContent = '\uFEFF';
             csvContent += '真實姓名,電子信箱,身分,權限,登入次數,註冊日期\n';
             
             STATE.usersList.forEach(u => {
                 const dateStr = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('zh-TW') : '';
                 const typeStr = u.userType === 'student' ? 'TONY學員' : '一般訪客';
-                // escape quotes for csv
                 const row = [
                     `"${u.realName || ''}"`,
                     `"${u.email}"`,

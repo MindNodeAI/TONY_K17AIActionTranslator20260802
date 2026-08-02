@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拍一下，就知道怎麼辦 | TONY STUDIO</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 引入 marked.js 用於解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a', // 深藍
+                        secondary: '#f59e0b', // 暖金
+                        success: '#10b981', // 綠色
+                        danger: '#ef4444', // 紅色
+                        background: '#f3f4f6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); }
+        .hidden-view { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        /* Markdown Styles for AI Output */
+        .markdown-body h1 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; color: #1e3a8a; }
+        .markdown-body h2 { font-size: 1.25em; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; color: #1e3a8a; }
+        .markdown-body h3 { font-size: 1.15em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; color: #b45309; } /* 針對 🎯 標題特別設計 */
+        .markdown-body p { margin-bottom: 1em; line-height: 1.6; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        .markdown-body strong { font-weight: bold; color: #111827; }
+        
+        /* 特別標示：下一步行動的高光卡片樣式 */
+        .markdown-body blockquote { 
+            background-color: #fffbeb; 
+            border-left: 5px solid #f59e0b; 
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .markdown-body blockquote p, .markdown-body blockquote ul {
+            color: #92400e; 
+            font-weight: 700; 
+            font-size: 1.1em; 
+            margin-bottom: 0;
+        }
+        .markdown-body blockquote ul { margin-top: 0.5rem; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative">
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm fade-in">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform transition-all">
+            <div class="text-center">
+                <div id="modal-icon" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <i class="fas fa-info-circle text-blue-600 text-xl"></i>
+                </div>
+                <h3 id="modal-title" class="text-lg leading-6 font-medium text-gray-900 mb-2">提示</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p id="modal-message" class="text-sm text-gray-500"></p>
+                </div>
+                <div id="modal-actions" class="mt-4 flex justify-center gap-3">
+                    <button id="modal-btn-cancel" class="hidden px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-lg shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300">取消</button>
+                    <button id="modal-btn-confirm" class="px-4 py-2 bg-primary text-white text-base font-medium rounded-lg shadow-sm hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-[60] hidden flex flex-col items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+        <i class="fas fa-circle-notch fa-spin text-white text-5xl mb-4"></i>
+        <p id="loading-text" class="text-white text-lg font-medium tracking-wide mb-4">處理中，請稍候...</p>
+        <button id="btn-cancel-loading" class="hidden px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm font-medium transition shadow-lg border border-gray-500">
+            <i class="fas fa-times mr-1"></i> 取消任務
+        </button>
+    </div>
+
+    <!-- Top API Key Bar (Visible only when logged in) -->
+    <div id="api-key-bar" class="hidden-view bg-gradient-to-r from-primary to-blue-800 text-white shadow-md z-40 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-key text-secondary"></i>
+                <span class="text-sm font-medium">Gemini API Key 狀態：</span>
+                <span id="api-key-status" class="text-xs px-2 py-1 bg-red-500/20 text-red-100 rounded-full border border-red-400">未設定</span>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <input type="password" id="input-api-key" placeholder="輸入您的 Gemini API Key" class="px-3 py-1.5 text-sm text-gray-900 rounded bg-white border-none focus:ring-2 focus:ring-secondary w-full sm:w-64 placeholder-gray-400">
+                <button id="btn-save-key" class="bg-secondary hover:bg-yellow-600 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap">儲存</button>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-200 hover:text-white underline whitespace-nowrap">取得 Key</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav id="main-nav" class="hidden-view bg-white shadow-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <img src="https://i.postimg.cc/fT2sQW09/1.png" alt="Logo" class="h-10 w-auto mr-3">
+                    <span class="font-bold text-xl text-primary tracking-tight">拍一下，就知道怎麼辦</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="nav-user-name" class="text-sm text-gray-600 font-medium hidden sm:block"></span>
+                    <button id="btn-nav-admin" class="hidden px-3 py-1.5 bg-purple-100 text-purple-700 rounded-md text-sm font-semibold hover:bg-purple-200 transition">
+                        <i class="fas fa-shield-alt mr-1"></i> 管理後台
+                    </button>
+                    <button id="btn-nav-logout" class="text-gray-500 hover:text-danger transition">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- View: Auth (Login / Register) -->
+    <main id="view-auth" class="flex-grow flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-center relative">
+        <div class="absolute inset-0 bg-primary/60 backdrop-blur-sm"></div>
+        
+        <div class="glass-panel w-full max-w-md rounded-2xl p-8 relative z-10 fade-in">
+            <div class="text-center mb-8">
+                <img src="https://i.postimg.cc/fT2sQW09/1.png" alt="Logo" class="h-16 mx-auto mb-4 drop-shadow-md">
+                <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">AI 行動翻譯機</h2>
+                <p class="text-sm text-gray-600 mt-2">把生活文件，直接變成下一步行動。</p>
+            </div>
+
+            <!-- Error Message Box -->
+            <div id="auth-error" class="hidden mb-4 bg-red-50 border-l-4 border-danger p-4 rounded-r-md">
+                <p class="text-sm text-danger font-medium" id="auth-error-text"></p>
+            </div>
+            
+            <!-- Success Message Box -->
+            <div id="auth-success" class="hidden mb-4 bg-green-50 border-l-4 border-success p-4 rounded-r-md">
+                <p class="text-sm text-success font-medium" id="auth-success-text"></p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="form-login" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">電子信箱</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition shadow-sm">
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">密碼</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition shadow-sm pr-10">
+                    <button type="button" class="toggle-password absolute right-3 top-9 text-gray-400 hover:text-gray-600" data-target="login-password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="login-remember" checked class="rounded border-gray-300 text-primary focus:ring-primary">
+                        <span class="ml-2 text-xs text-gray-500">記住信箱</span>
+                    </label>
+                    <a href="#" id="link-forgot" class="text-sm text-primary hover:underline font-medium">忘記密碼？</a>
+                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2">
+                    <i class="fas fa-sign-in-alt"></i> 登入系統
+                </button>
+                <div class="text-center mt-4">
+                    <p class="text-sm text-gray-600">還沒有帳號？ <a href="#" id="link-to-register" class="text-secondary hover:text-yellow-600 font-bold hover:underline">立即註冊</a></p>
+                </div>
+            </form>
+
+            <!-- Register Form (Hidden by default) -->
+            <form id="form-register" class="space-y-4 hidden-view">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">真實姓名 <span class="text-red-500">*</span></label>
+                        <input type="text" id="reg-name" required class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">身分 <span class="text-red-500">*</span></label>
+                        <select id="reg-type" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none text-sm bg-white">
+                            <option value="visitor">一般訪客</option>
+                            <option value="student">TONY老師學員</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">電子信箱 <span class="text-red-500">*</span></label>
+                    <input type="email" id="reg-email" required class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none text-sm">
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">密碼 (至少6碼) <span class="text-red-500">*</span></label>
+                    <input type="password" id="reg-password" minlength="6" required class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none text-sm pr-10">
+                    <button type="button" class="toggle-password absolute right-3 top-8 text-gray-400" data-target="reg-password"><i class="fas fa-eye"></i></button>
+                </div>
+                
+                <!-- REQUIRED TEXT FOR SPAM FOLDER -->
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
+                    <i class="fas fa-exclamation-triangle text-secondary mt-0.5"></i>
+                    <p class="text-xs text-yellow-800 font-medium leading-relaxed">
+                        溫馨提醒：註冊確認信有時會跑到「垃圾郵件匣」，請記得前往確認唷！
+                    </p>
+                </div>
+
+                <button type="submit" class="w-full bg-secondary hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all">
+                    註冊並發送驗證信
+                </button>
+                <div class="text-center mt-2">
+                    <p class="text-sm text-gray-600">已經有帳號了？ <a href="#" id="link-to-login" class="text-primary hover:underline font-bold">返回登入</a></p>
+                </div>
+            </form>
+            
+            <!-- Forgot Password Form (Hidden by default) -->
+            <form id="form-forgot" class="space-y-4 hidden-view">
+                <p class="text-sm text-gray-600 mb-4">請輸入您的註冊信箱，我們將寄送重設密碼的連結給您。</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">電子信箱</label>
+                    <input type="email" id="forgot-email" required class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none">
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
+                    <i class="fas fa-exclamation-triangle text-secondary mt-0.5"></i>
+                    <p class="text-xs text-yellow-800 font-medium leading-relaxed">
+                        溫馨提醒：註冊確認信有時會跑到「垃圾郵件匣」，請記得前往確認唷！
+                    </p>
+                </div>
+
+                <button type="submit" class="w-full bg-primary hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all">
+                    發送重設連結
+                </button>
+                <div class="text-center mt-2">
+                    <a href="#" id="link-forgot-to-login" class="text-sm text-gray-500 hover:text-primary hover:underline">返回登入</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- View: Main App -->
+    <main id="view-app" class="hidden-view flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Welcome & Stats -->
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">歡迎回來，<span id="dashboard-name">會員</span>！</h1>
+                <p class="text-gray-500 text-sm mt-1">今天有什麼生活文件需要整理？AI 幫您轉化為行動。</p>
+            </div>
+            <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="p-2 bg-blue-50 rounded-md"><i class="fas fa-bolt text-primary"></i></div>
+                <div>
+                    <p class="text-xs text-gray-500">本機備份任務數</p>
+                    <p class="text-lg font-bold text-gray-900" id="stat-local-tasks">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Actions -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Quick Snap / OCR Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-br from-primary to-blue-900 p-6 text-center text-white relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                        <h2 class="text-xl font-bold mb-2">快速文件辨識</h2>
+                        <p class="text-sm text-blue-100 mb-6">上傳帳單、通知單，自動擷取重點</p>
+                        
+                        <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden">
+                        <input type="file" id="file-gallery" accept="image/jpeg, image/png, image/webp" class="hidden">
+                        
+                        <div class="space-y-3">
+                            <button id="btn-camera" class="w-full bg-white text-primary hover:bg-gray-50 font-bold py-4 px-4 rounded-xl shadow-lg transition-transform transform active:scale-95 flex items-center justify-center gap-2">
+                                <i class="fas fa-camera text-2xl"></i> 直接拍照
+                            </button>
+                            <button id="btn-gallery" class="w-full bg-blue-800/50 hover:bg-blue-700/50 border border-blue-400 text-white font-medium py-3 px-4 rounded-xl transition-colors active:scale-95 flex items-center justify-center gap-2">
+                                <i class="far fa-images text-lg"></i> 從相簿選擇
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Result & History -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Current Result Area -->
+                <div id="result-area" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hidden-view fade-in flex flex-col h-full min-h-[500px]">
+                    <div class="flex justify-between items-center mb-4 border-b pb-4">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-robot text-primary"></i> AI 答覆結果
+                        </h3>
+                        <div class="flex gap-2">
+                            <button id="btn-copy-result" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm font-medium transition" title="複製內容">
+                                <i class="far fa-copy"></i> 複製
+                            </button>
+                            <button id="btn-export-word" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-primary rounded text-sm font-medium transition" title="存成 Word 檔">
+                                <i class="far fa-file-word"></i> 匯出 Word
+                            </button>
+                            <button id="btn-save-cloud" class="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-success rounded text-sm font-medium transition" title="備份至雲端">
+                                <i class="fas fa-cloud-upload-alt"></i> 雲端備份
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Result Content (Markdown rendered) -->
+                    <div id="ai-output-content" class="markdown-body flex-grow overflow-y-auto pr-2 text-sm text-gray-800">
+                        <!-- AI content injected here -->
+                    </div>
+                </div>
+
+                <!-- History Area -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-history text-gray-500"></i> 本地歷史任務
+                        </h3>
+                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">離線自動儲存</span>
+                    </div>
+                    <div id="history-list" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                        <!-- History items injected here -->
+                        <div class="text-center py-8 text-gray-400 text-sm italic" id="empty-history">
+                            尚無歷史任務紀錄
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TONY Consultant Profile -->
+        <div class="mt-12 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-4">
+                <div class="md:col-span-1 bg-gradient-to-b from-gray-50 to-gray-100 p-6 flex flex-col items-center justify-center border-r border-gray-200">
+                    <img src="https://i.postimg.cc/Gh8Zt7SX/S_56844323.jpg" alt="TONY 顧問" class="w-32 h-32 rounded-full object-cover shadow-md border-4 border-white mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 text-center">TONY 楊文澤 老師</h3>
+                    <div class="mt-2 text-center space-y-1">
+                        <span class="inline-block px-2 py-1 bg-blue-100 text-primary text-xs font-semibold rounded-full">資深數位行銷科技顧問</span>
+                        <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">生成式 AI 創作者</span>
+                        <span class="inline-block px-2 py-1 bg-green-100 text-success text-xs font-semibold rounded-full">創業導師</span>
+                    </div>
+                </div>
+                <div class="md:col-span-3 p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                    <div>
+                        <h4 class="font-bold text-primary border-b border-gray-200 pb-1 mb-2"><i class="fas fa-briefcase mr-2"></i>現職 Current</h4>
+                        <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                            <li>龍華科大 數位行銷講師</li>
+                            <li>智策慧 品牌行銷科技顧問</li>
+                        </ul>
+                        
+                        <h4 class="font-bold text-primary border-b border-gray-200 pb-1 mb-2 mt-4"><i class="fas fa-history mr-2"></i>經歷 Experience</h4>
+                        <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                            <li>脈動心聯股份有限公司 創辦人暨執行長</li>
+                            <li>宏碁集團建碁 AOPEN 整合營銷處處長 / 全球品牌行銷總監 / 企業發言人</li>
+                            <li>台灣數位看板多媒體聯盟 (DSMA) 副會長</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary border-b border-gray-200 pb-1 mb-2"><i class="fas fa-graduation-cap mr-2"></i>學歷 Education</h4>
+                        <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                            <li>台大 EMBA 商學組</li>
+                            <li>美國 Arizona State University 互動多媒體設計</li>
+                            <li>北科大 工業設計</li>
+                        </ul>
+
+                        <h4 class="font-bold text-primary border-b border-gray-200 pb-1 mb-2 mt-4"><i class="fas fa-chalkboard-teacher mr-2"></i>專家授課經歷</h4>
+                        <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                            <li>CPC 生產力中心 經營管理顧問師班 / 中小企業成長創價能量 講師</li>
+                            <li>台大 EMBA / 長榮 EMBA / 北科大 / 政大 / 世新 業師</li>
+                            <li>2021 MarTech 行銷科技行銷長認證班 講師</li>
+                            <li>2021/2024/2025 T大使與產業尖兵 講師</li>
+                            <li>2025 新光人壽 AI 工具應用 企業內訓講師</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- View: Admin Dashboard -->
+    <main id="view-admin" class="hidden-view flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 fade-in">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-purple-600"></i> 管理者後台 (Admin Dashboard)
+                </h2>
+                <p class="text-gray-500 text-sm mt-1">管理所有註冊會員資料與權限設定。</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="btn-export-csv" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
+                    <i class="fas fa-file-csv"></i> 匯出 CSV (支援 Excel)
+                </button>
+                <button id="btn-back-to-app" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> 返回系統
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">會員資訊 (姓名 / 信箱)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">身分</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">權限</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">註冊時間 / 登入次數</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作管理</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-user-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Rows injected here -->
+                        <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400">載入中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+            <p class="text-sm text-gray-500 font-medium">© 2026 TONY STUDIO. 本教材由 TONY STUDIO 楊文澤顧問設計. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, getDocs, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // === 替換為正式的 Firebase Config ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdnw6AC5Z2wWdnmuPSvNd80JFk82uP51Y", // Formal Key as requested
+            authDomain: "k17-then-i-know-what-to-do.firebaseapp.com",
+            projectId: "k17-then-i-know-what-to-do",
+            storageBucket: "k17-then-i-know-what-to-do.firebasestorage.app",
+            messagingSenderId: "600161607413",
+            appId: "1:600161607413:web:285fc1756cfd24e6f42fbc",
+            measurementId: "G-VTYG48YLRB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 初始化時載入儲存的信箱
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedEmail = localStorage.getItem('tony_login_email');
+            if(savedEmail) {
+                const emailInput = document.getElementById('login-email');
+                if(emailInput) emailInput.value = savedEmail;
+            }
+        });
+
+        // Global State
+        const STATE = {
+            user: null,
+            userData: null,
+            isAdmin: false,
+            isRegistering: false, // 1. 新增此旗標
+            geminiKey: localStorage.getItem('tony_gemini_key') || '',
+            localTasks: JSON.parse(localStorage.getItem('tony_local_tasks') || '[]'),
+            currentTask: null // Store result for exporting
+        };
+
+        let currentAbortController = null; // 新增：用於控制取消 API 請求
+
+        const SUPER_ADMIN_EMAIL = 'mindnodeai@gmail.com';
+
+        // DOM Elements - Views
+        const viewAuth = document.getElementById('view-auth');
+        const viewApp = document.getElementById('view-app');
+        const viewAdmin = document.getElementById('view-admin');
+        const nav = document.getElementById('main-nav');
+        const apiKeyBar = document.getElementById('api-key-bar');
+        
+        // DOM - Utils
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+
+        // --- Custom Modal System ---
+        function showModal(title, message, isConfirm = false, onConfirm = null) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const modal = document.getElementById('custom-modal');
+            const btnCancel = document.getElementById('modal-btn-cancel');
+            const btnConfirm = document.getElementById('modal-btn-confirm');
+            const icon = document.getElementById('modal-icon');
+
+            // Reset icon
+            icon.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4';
+            icon.innerHTML = '<i class="fas fa-info-circle text-xl"></i>';
+            
+            if (isConfirm) {
+                btnCancel.classList.remove('hidden');
+                icon.classList.add('bg-yellow-100', 'text-yellow-600');
+                icon.innerHTML = '<i class="fas fa-exclamation-triangle text-xl text-yellow-600"></i>';
+            } else {
+                btnCancel.classList.add('hidden');
+                if(title.includes('錯誤') || title.includes('失敗')) {
+                    icon.classList.add('bg-red-100', 'text-red-600');
+                    icon.innerHTML = '<i class="fas fa-times-circle text-xl text-red-600"></i>';
+                } else {
+                    icon.classList.add('bg-blue-100', 'text-blue-600');
+                }
+            }
+
+            modal.classList.remove('hidden');
+
+            // Cleanup old listeners to prevent multiple firing
+            const newConfirm = btnConfirm.cloneNode(true);
+            const newCancel = btnCancel.cloneNode(true);
+            btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
+            btnCancel.parentNode.replaceChild(newCancel, btnCancel);
+
+            newCancel.addEventListener('click', () => { modal.classList.add('hidden'); });
+            newConfirm.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                if (onConfirm) onConfirm();
+            });
+        }
+        
+        function showLoading(text = '處理中...', cancellable = false) {
+            loadingText.textContent = text;
+            loadingOverlay.classList.remove('hidden');
+            
+            const cancelBtn = document.getElementById('btn-cancel-loading');
+            if (cancellable) {
+                cancelBtn.classList.remove('hidden');
+            } else {
+                cancelBtn.classList.add('hidden');
+            }
+        }
+        
+        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+        
+        // 綁定取消按鈕事件
+        document.getElementById('btn-cancel-loading').addEventListener('click', () => {
+            if (currentAbortController) {
+                currentAbortController.abort(); // 觸發中斷
+            }
+        });
+
+        function showAuthError(msg) { 
+            const el = document.getElementById('auth-error');
+            document.getElementById('auth-error-text').textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+        function showAuthSuccess(msg) { 
+            const el = document.getElementById('auth-success');
+            document.getElementById('auth-success-text').textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        // --- View Routing ---
+        function switchView(viewName) {
+            viewAuth.classList.add('hidden-view');
+            viewApp.classList.add('hidden-view');
+            viewAdmin.classList.add('hidden-view');
+            nav.classList.add('hidden-view');
+            apiKeyBar.classList.add('hidden-view');
+
+            if (viewName === 'auth') {
+                viewAuth.classList.remove('hidden-view');
+            } else if (viewName === 'app') {
+                viewApp.classList.remove('hidden-view');
+                nav.classList.remove('hidden-view');
+                apiKeyBar.classList.remove('hidden-view');
+                renderLocalTasks();
+                updateApiKeyStatusUI();
+            } else if (viewName === 'admin') {
+                viewAdmin.classList.remove('hidden-view');
+                nav.classList.remove('hidden-view');
+                loadAdminData();
+            }
+        }
+
+        // Toggle Auth Forms
+        document.getElementById('link-to-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-login').classList.add('hidden-view'); document.getElementById('form-register').classList.remove('hidden-view'); document.getElementById('form-forgot').classList.add('hidden-view'); });
+        document.getElementById('link-to-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-register').classList.add('hidden-view'); document.getElementById('form-login').classList.remove('hidden-view'); document.getElementById('form-forgot').classList.add('hidden-view'); });
+        document.getElementById('link-forgot').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-login').classList.add('hidden-view'); document.getElementById('form-forgot').classList.remove('hidden-view'); });
+        document.getElementById('link-forgot-to-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('form-forgot').classList.add('hidden-view'); document.getElementById('form-login').classList.remove('hidden-view'); });
+
+        // Password Visibility Toggle
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye');
+                }
+            });
+        });
+
+        // Register
+        document.getElementById('form-register').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const name = document.getElementById('reg-name').value.trim();
+            const type = document.getElementById('reg-type').value;
+
+            try {
+                STATE.isRegistering = true; // 2. 註冊開始時設定為 true
+                showLoading('建立帳號中...');
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                // Set initial RBAC rules (Client-side simulation for this assignment scope)
+                // In production, Role claims should be set via Cloud Functions.
+                const role = (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) ? 'admin' : 'user';
+                
+                // Write user profile to Firestore
+                await setDoc(doc(db, "k17_users", user.uid), {
+                    email: email,
+                    realName: name,
+                    userType: type,
+                    role: role,
+                    loginCount: 0,
+                    createdAt: serverTimestamp(),
+                    lastLogin: serverTimestamp()
+                });
+
+                await updateProfile(user, { displayName: name });
+                
+                // Double Opt-in: Send verification email
+                await sendEmailVerification(user);
+                await signOut(auth); // Force logout until verified
+                
+                hideLoading();
+                document.getElementById('form-register').classList.add('hidden-view');
+                document.getElementById('form-login').classList.remove('hidden-view');
+                showAuthSuccess('註冊成功！請至信箱點擊驗證連結後再登入。（若未收到請檢查垃圾郵件匣）');
+                
+            } catch (error) {
+                hideLoading();
+                showAuthError('註冊失敗：' + error.message);
+            } finally {
+                STATE.isRegistering = false; // 3. 執行結束後務必還原
+            }
+        });
+
+        // Login
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const rememberMe = document.getElementById('login-remember').checked;
+
+            try {
+                showLoading('驗證登入資訊...');
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 嚴格強制 Email 驗證 (移除沙盒繞過邏輯)
+                if (!user.emailVerified) {
+                    await signOut(auth);
+                    hideLoading();
+                    showAuthError('登入被阻擋：您的信箱尚未驗證。請至信箱點擊驗證連結，或檢查垃圾信件匣。');
+                    return;
+                }
+
+                // 處理記住信箱
+                if (rememberMe) {
+                    localStorage.setItem('tony_login_email', email);
+                } else {
+                    localStorage.removeItem('tony_login_email');
+                }
+
+                // Update Login Count
+                const userRef = doc(db, "k17_users", user.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    let data = userSnap.data();
+                    STATE.userData = data;
+                    STATE.isAdmin = data.role === 'admin' || user.email === SUPER_ADMIN_EMAIL;
+                    
+                    await updateDoc(userRef, { 
+                        loginCount: (data.loginCount || 0) + 1,
+                        lastLogin: serverTimestamp()
+                    });
+                } else {
+                    // 自動修復機制：因為先前的註冊卡頓 Bug，可能導致帳號建立但資料庫未寫入
+                    // 若發現資料庫沒這筆資料，我們自動補建！
+                    if (user.email === SUPER_ADMIN_EMAIL) {
+                        await setDoc(userRef, {
+                            email: user.email,
+                            realName: user.displayName || '系統創作者',
+                            userType: 'admin',
+                            role: 'admin',
+                            loginCount: 1,
+                            createdAt: serverTimestamp(),
+                            lastLogin: serverTimestamp()
+                        });
+                        STATE.userData = { realName: user.displayName || '系統創作者', role: 'admin' };
+                        STATE.isAdmin = true;
+                    } else {
+                        await setDoc(userRef, {
+                            email: user.email,
+                            realName: user.displayName || '使用者',
+                            userType: 'visitor',
+                            role: 'user',
+                            loginCount: 1,
+                            createdAt: serverTimestamp(),
+                            lastLogin: serverTimestamp()
+                        });
+                        STATE.userData = { realName: user.displayName || '使用者', role: 'user' };
+                        STATE.isAdmin = false;
+                    }
+                }
+
+                document.getElementById('nav-user-name').innerHTML = `嗨, <strong>${STATE.userData.realName}</strong>`;
+                document.getElementById('dashboard-name').textContent = STATE.userData.realName;
+                
+                if (STATE.isAdmin) {
+                    document.getElementById('btn-nav-admin').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-nav-admin').classList.add('hidden');
+                }
+
+                hideLoading();
+                switchView('app');
+                
+            } catch (error) {
+                hideLoading();
+                let msg = '登入失敗，請檢查信箱與密碼。';
+                if(error.code === 'auth/invalid-credential') msg = '帳號或密碼錯誤。';
+                showAuthError(msg);
+            }
+        });
+
+        // Forgot Password
+        document.getElementById('form-forgot').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgot-email').value.trim();
+            try {
+                showLoading('發送中...');
+                await sendPasswordResetEmail(auth, email);
+                hideLoading();
+                showAuthSuccess('若此 Email 已註冊，系統將寄出重設說明。');
+                document.getElementById('form-forgot').classList.add('hidden-view');
+                document.getElementById('form-login').classList.remove('hidden-view');
+            } catch (error) {
+                hideLoading();
+                showAuthError('發送失敗：' + error.message);
+            }
+        });
+
+        // Logout
+        document.getElementById('btn-nav-logout').addEventListener('click', async () => {
+            showModal('確認登出', '確定要登出系統嗎？', true, async () => {
+                await signOut(auth);
+                STATE.user = null;
+                STATE.userData = null;
+                STATE.isAdmin = false;
+                switchView('auth');
+            });
+        });
+
+        // Auth State Observer
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // 4. 告訴監聽器：如果正在註冊流程中，不要觸發未驗證自動登出
+                if (STATE.isRegistering) return;
+                
+                // 嚴格檢查未驗證強制登出
+                if (!user.emailVerified) {
+                    signOut(auth);
+                    switchView('auth');
+                    return;
+                }
+                STATE.user = user;
+                // Fetch profile to secure routing on reload
+                const userSnap = await getDoc(doc(db, "k17_users", user.uid));
+                if (userSnap.exists()) {
+                    STATE.userData = userSnap.data();
+                    STATE.isAdmin = STATE.userData.role === 'admin' || user.email === SUPER_ADMIN_EMAIL;
+                    document.getElementById('nav-user-name').innerHTML = `嗨, <strong>${STATE.userData.realName}</strong>`;
+                    document.getElementById('dashboard-name').textContent = STATE.userData.realName;
+                    if (STATE.isAdmin) document.getElementById('btn-nav-admin').classList.remove('hidden');
+                    switchView('app');
+                }
+            } else {
+                switchView('auth');
+            }
+        });
+
+
+        
+        const inputApiKey = document.getElementById('input-api-key');
+        const btnSaveKey = document.getElementById('btn-save-key');
+        const apiKeyStatus = document.getElementById('api-key-status');
+
+        function updateApiKeyStatusUI() {
+            if (STATE.geminiKey) {
+                inputApiKey.value = STATE.geminiKey.substring(0, 5) + '...' + STATE.geminiKey.substring(STATE.geminiKey.length - 4);
+                apiKeyStatus.textContent = '已設定';
+                apiKeyStatus.className = 'text-xs px-2 py-1 bg-green-500/20 text-green-100 rounded-full border border-green-400';
+            } else {
+                inputApiKey.value = '';
+                apiKeyStatus.textContent = '未設定';
+                apiKeyStatus.className = 'text-xs px-2 py-1 bg-red-500/20 text-red-100 rounded-full border border-red-400';
+            }
+        }
+
+        // --- 手機優先：分流拍照與相簿處理 ---
+        document.getElementById('btn-camera').addEventListener('click', () => document.getElementById('file-camera').click());
+        document.getElementById('btn-gallery').addEventListener('click', () => document.getElementById('file-gallery').click());
+        
+        // 新增：圖片轉 Base64 輔助函式
+        const fileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        };
+
+        // 新增：呼叫 Gemini API 輔助函式
+        const callGeminiAPI = async (prompt, base64Image, mimeType) => {
+            // 從 UI 狀態取得 Key，若無則報錯
+            const apiKey = inputApiKey.value.trim() || STATE.geminiKey;
+            if (!apiKey) throw new Error('請先在畫面上方設定您的 Gemini API Key');
+            
+            // 使用您指定的 gemini-3.5-flash 模型
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+            
+            // 初始化取消控制器 (AbortController)
+            currentAbortController = new AbortController();
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: mimeType, data: base64Image } }
+                        ]
+                    }],
+                    generationConfig: { temperature: 0.1 } // 降低溫度以確保格式穩定
+                }),
+                signal: currentAbortController.signal // 綁定取消信號
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API 請求失敗');
+            }
+
+            const data = await response.json();
+            currentAbortController = null; // 處理完畢清空
+            return data.candidates[0].content.parts[0].text;
+        };
+
+        const handleImageUpload = async (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            try {
+                showLoading('正在分析文件，請稍候...', true); // 允許取消
+                const base64Str = await fileToBase64(file);
+                
+                const sysPrompt = `這是一份生活文件。請幫我提取以下重點並整理成易讀的格式：
+1. 文件類型 (例如：帳單、通知)
+2. 重點摘要
+3. 關鍵日期 (如果有)
+4. 相關金額 (如果有)
+5. 下一步行動建議 (這點最重要！請務必以「### 🎯 下一步行動建議」作為標題，並將具體行動內容放入 Markdown 的引用區塊 "> " 中，以條列式清晰說明)
+
+請嚴格根據圖片內容回答，不要自己腦補。若看不清楚請說明。`;
+
+                const aiResult = await callGeminiAPI(sysPrompt, base64Str, file.type);
+                displayResult(aiResult, `快速辨識: ${file.name}`);
+                saveLocalTask(`快速辨識: ${file.name}`, aiResult);
+                
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    console.log("使用者已取消快速辨識任務");
+                } else {
+                    showModal('辨識失敗', err.message);
+                }
+            } finally {
+                hideLoading();
+                e.target.value = ''; // reset
+            }
+        };
+
+        document.getElementById('file-camera').addEventListener('change', handleImageUpload);
+        document.getElementById('file-gallery').addEventListener('change', handleImageUpload);
+
+        // Display Result & Local Backup
+        function displayResult(content, title) {
+            document.getElementById('result-area').classList.remove('hidden-view');
+            // Parse Markdown
+            document.getElementById('ai-output-content').innerHTML = marked.parse(content);
+            
+            STATE.currentTask = {
+                title: title,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+        }
+
+        function saveLocalTask(title, content) {
+            const newTask = {
+                id: 'task_' + Date.now(),
+                title: title,
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            STATE.localTasks.unshift(newTask);
+            // keep last 50
+            if (STATE.localTasks.length > 50) STATE.localTasks.pop();
+            localStorage.setItem('tony_local_tasks', JSON.stringify(STATE.localTasks));
+            renderLocalTasks();
+        }
+
+        function renderLocalTasks() {
+            const list = document.getElementById('history-list');
+            const empty = document.getElementById('empty-history');
+            document.getElementById('stat-local-tasks').textContent = STATE.localTasks.length;
+            
+            // clear old items (keep empty message template)
+            Array.from(list.children).forEach(child => {
+                if(child.id !== 'empty-history') child.remove();
+            });
+
+            if (STATE.localTasks.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            STATE.localTasks.forEach(task => {
+                const dateStr = new Date(task.timestamp).toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+                const div = document.createElement('div');
+                div.className = 'group p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-blue-50 transition cursor-pointer flex justify-between items-center';
+                div.innerHTML = `
+                    <div class="truncate pr-4" onclick="window.loadHistoryTask('${task.id}')">
+                        <p class="text-sm font-bold text-gray-800 truncate">${task.title}</p>
+                        <p class="text-xs text-gray-500">${dateStr}</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-danger hidden group-hover:block transition" onclick="window.deleteHistoryTask('${task.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+        }
+        
+        window.loadHistoryTask = (id) => {
+            const task = STATE.localTasks.find(t => t.id === id);
+            if(task) displayResult(task.content, task.title);
+        }
+
+        window.deleteHistoryTask = (id) => {
+            showModal('刪除紀錄', '確定要刪除這筆本地紀錄嗎？', true, () => {
+                STATE.localTasks = STATE.localTasks.filter(t => t.id !== id);
+                localStorage.setItem('tony_local_tasks', JSON.stringify(STATE.localTasks));
+                renderLocalTasks();
+                // if it's the current one, hide view
+                if(STATE.currentTask && STATE.currentTask.id === id) {
+                    document.getElementById('result-area').classList.add('hidden-view');
+                }
+            });
+        }
+
+        
+        document.getElementById('btn-copy-result').addEventListener('click', () => {
+            const text = STATE.currentTask?.content;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showModal('成功', '內容已複製到剪貼簿。');
+                });
+            }
+        });
+
+        document.getElementById('btn-export-word').addEventListener('click', () => {
+            if (!STATE.currentTask) return;
+            // Generate simple HTML compatible with MS Word
+            const htmlContent = document.getElementById('ai-output-content').innerHTML;
+            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title><style>body { font-family: '微軟正黑體', sans-serif; }</style></head><body>";
+            const postHtml = "</body></html>";
+            const html = preHtml + `<h1>${STATE.currentTask.title}</h1><hr/>` + htmlContent + postHtml;
+            
+            // Add BOM for UTF-8 Excel/Word recognition
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const safeTitle = STATE.currentTask.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            link.download = `AI_Task_${safeTitle}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('btn-save-cloud').addEventListener('click', async () => {
+            if (!STATE.user || !STATE.currentTask) return;
+            try {
+                showLoading('備份至雲端...');
+                const taskRef = doc(collection(db, "k17_users", STATE.user.uid, "tasks"));
+                await setDoc(taskRef, {
+                    title: STATE.currentTask.title,
+                    content: STATE.currentTask.content,
+                    createdAt: serverTimestamp()
+                });
+                hideLoading();
+                showModal('備份成功', '此任務已安全儲存至您的 Firebase 專屬資料庫。');
+            } catch (err) {
+                hideLoading();
+                showModal('備份失敗', err.message);
+            }
+        });
+
+        
+        document.getElementById('btn-nav-admin').addEventListener('click', () => switchView('admin'));
+        document.getElementById('btn-back-to-app').addEventListener('click', () => switchView('app'));
+
+        async function loadAdminData() {
+            if (!STATE.isAdmin) {
+                showModal('錯誤', '您沒有權限訪問此頁面');
+                switchView('app');
+                return;
+            }
+
+            const tbody = document.getElementById('admin-user-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-10 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> 讀取會員資料中...</td></tr>';
+
+            try {
+                // Notice: In a real secure app, this requires Firestore rule: allow read: if request.auth.token.admin == true
+                // Here we fetch all users (assuming rules permit it for this demo scope)
+                const q = query(collection(db, "k17_users"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                let html = '';
+                STATE.usersList = []; // store for CSV export
+
+                querySnapshot.forEach((docSnap) => {
+                    const u = docSnap.data();
+                    const uid = docSnap.id;
+                    u.uid = uid;
+                    STATE.usersList.push(u);
+
+                    const dateStr = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('zh-TW') : '未知';
+                    const roleBadge = u.role === 'admin' 
+                        ? `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">管理員</span>`
+                        : `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">一般會員</span>`;
+                    
+                    const typeStr = u.userType === 'student' ? 'TONY學員' : '一般訪客';
+
+                    // Protect SUPER_ADMIN_EMAIL from being downgraded or deleted
+                    const isSuper = (u.email === SUPER_ADMIN_EMAIL);
+                    
+                    let actionButtons = '';
+                    if (!isSuper) {
+                        const toggleRoleBtn = u.role === 'admin'
+                            ? `<button onclick="window.adminChangeRole('${uid}', 'user')" class="text-orange-600 hover:text-orange-900 text-sm font-medium">降級會員</button>`
+                            : `<button onclick="window.adminChangeRole('${uid}', 'admin')" class="text-purple-600 hover:text-purple-900 text-sm font-medium">升級Admin</button>`;
+                        
+                        actionButtons = `
+                            ${toggleRoleBtn}
+                            <span class="text-gray-300 mx-2">|</span>
+                            <button onclick="window.adminDeleteUser('${uid}')" class="text-danger hover:text-red-900 text-sm font-medium">刪除</button>
+                        `;
+                    } else {
+                        actionButtons = `<span class="text-xs text-gray-400">系統創作者(受保護)</span>`;
+                    }
+
+                    html += `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-blue-100 to-primary rounded-full flex items-center justify-center text-white font-bold">
+                                        ${u.realName ? u.realName.charAt(0) : 'U'}
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">${u.realName || '未提供'}</div>
+                                        <div class="text-sm text-gray-500">${u.email}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${typeStr}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${roleBadge}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div>${dateStr}</div>
+                                <div class="text-xs text-gray-400">登入: ${u.loginCount || 0} 次</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                ${actionButtons}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-danger">讀取失敗：${error.message}<br><span class="text-xs text-gray-500">(請確保 Firestore 規則允許 admin 讀取)</span></td></tr>`;
+            }
+        }
+
+        window.adminChangeRole = (uid, newRole) => {
+            const roleName = newRole === 'admin' ? '管理員' : '一般會員';
+            showModal('變更權限', `確定要將此用戶變更為「${roleName}」嗎？`, true, async () => {
+                try {
+                    showLoading('更新中...');
+                    await updateDoc(doc(db, "k17_users", uid), { role: newRole });
+                    hideLoading();
+                    loadAdminData(); // refresh table
+                } catch (err) {
+                    hideLoading();
+                    showModal('更新失敗', err.message);
+                }
+            });
+        }
+
+        window.adminDeleteUser = (uid) => {
+            showModal('危險操作', `確定要永久刪除此會員的資料嗎？(這將刪除其 Firestore 檔案，Auth 實體需透過 Admin SDK 刪除)`, true, async () => {
+                try {
+                    showLoading('刪除中...');
+                    await deleteDoc(doc(db, "k17_users", uid));
+                    hideLoading();
+                    loadAdminData(); // refresh table
+                } catch (err) {
+                    hideLoading();
+                    showModal('刪除失敗', err.message);
+                }
+            });
+        }
+
+        // Export CSV with BOM
+        document.getElementById('btn-export-csv').addEventListener('click', () => {
+            if(!STATE.usersList || STATE.usersList.length === 0) return;
+            
+            let csvContent = '\uFEFF'; // BOM for Excel UTF-8
+            csvContent += '真實姓名,電子信箱,身分,權限,登入次數,註冊日期\n';
+            
+            STATE.usersList.forEach(u => {
+                const dateStr = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('zh-TW') : '';
+                const typeStr = u.userType === 'student' ? 'TONY學員' : '一般訪客';
+                // escape quotes for csv
+                const row = [
+                    `"${u.realName || ''}"`,
+                    `"${u.email}"`,
+                    `"${typeStr}"`,
+                    `"${u.role}"`,
+                    `${u.loginCount || 0}`,
+                    `"${dateStr}"`
+                ].join(',');
+                csvContent += row + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "k17_users_export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+    </script>
+</body>
+</html>
